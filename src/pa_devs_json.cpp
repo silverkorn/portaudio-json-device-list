@@ -66,7 +66,6 @@ static rapidjson::Value PrintSupportedStandardSampleRates(
         const PaStreamParameters *inputParameters,
         const PaStreamParameters *outputParameters,
 		rapidjson::Document::AllocatorType& jsonDocAlloc
-		
 )
 {
     static double standardSampleRates[] = {
@@ -130,39 +129,13 @@ int main(void)
     for( i=0; i<numDevices; i++ )
     {
 		deviceInfo = Pa_GetDeviceInfo( i );
+        bool isDeviceDefault = false;
         rapidjson::Value jsonObject(rapidjson::kObjectType);
 		jsonObject.SetObject();
+        
         jsonObject.AddMember("id", rapidjson::Value().SetInt(i), jsonDocAlloc);
 		
-		
-    /* Mark global and API specific default devices */
-        if( i == Pa_GetDefaultInputDevice() )
-        {
-            //printf( "[ Default Input" );
-            //defaultDisplayed = 1;
-			jsonObject.AddMember("type", rapidjson::Value().SetString("input"), jsonDocAlloc);
-			jsonObject.AddMember("hostName", rapidjson::Value().SetString("Default"), jsonDocAlloc);
-        }
-        else if( i == Pa_GetHostApiInfo( deviceInfo->hostApi )->defaultInputDevice )
-        {
-            const PaHostApiInfo *hostInfo = Pa_GetHostApiInfo( deviceInfo->hostApi );
-			jsonObject.AddMember("type", rapidjson::Value().SetString("input"), jsonDocAlloc);
-			jsonObject.AddMember("hostName", rapidjson::Value().SetString(std::string(hostInfo->name).c_str(), std::string(hostInfo->name).length(), jsonDocAlloc), jsonDocAlloc);
-        }
-        
-        if( i == Pa_GetDefaultOutputDevice() )
-        {
-            jsonObject.AddMember("type", rapidjson::Value().SetString("output"), jsonDocAlloc);
-			jsonObject.AddMember("hostName", rapidjson::Value().SetString("Default"), jsonDocAlloc);
-        }
-        else if( i == Pa_GetHostApiInfo( deviceInfo->hostApi )->defaultOutputDevice )
-        {
-            const PaHostApiInfo *hostInfo = Pa_GetHostApiInfo( deviceInfo->hostApi );
-			jsonObject.AddMember("type", rapidjson::Value().SetString("output"), jsonDocAlloc);
-			jsonObject.AddMember("hostName", rapidjson::Value().SetString(std::string(hostInfo->name).c_str(), std::string(hostInfo->name).length(), jsonDocAlloc), jsonDocAlloc);
-        }
-
-    /* print device info fields */
+        /* print device info fields */
 #ifdef WIN32
         {   /* Use wide char on windows, so we can show UTF-8 encoded device names */
             wchar_t wideName[MAX_PATH];
@@ -174,6 +147,42 @@ int main(void)
 #else
         jsonObject.AddMember("name", rapidjson::Value().SetString(std::string(deviceInfo->name).c_str(), std::string(deviceInfo->name).length(), jsonDocAlloc), jsonDocAlloc);
 #endif
+
+        /* Mark global and API specific default devices */
+        if( i == Pa_GetDefaultInputDevice() )
+        {
+            isDeviceDefault = true;
+            jsonObject.AddMember("isDefault", rapidjson::Value().SetBool(true), jsonDocAlloc);
+            jsonObject.AddMember("defaultType", rapidjson::Value().SetString("input"), jsonDocAlloc);
+        }
+        else if( i == Pa_GetHostApiInfo( deviceInfo->hostApi )->defaultInputDevice )
+        {
+            isDeviceDefault = true;
+            const PaHostApiInfo *hostInfo = Pa_GetHostApiInfo( deviceInfo->hostApi );
+            jsonObject.AddMember("isDefault", rapidjson::Value().SetBool(true), jsonDocAlloc);
+			jsonObject.AddMember("defaultType", rapidjson::Value().SetString("input"), jsonDocAlloc);
+        }
+
+        if( i == Pa_GetDefaultOutputDevice() )
+        {
+            isDeviceDefault = true;
+            jsonObject.AddMember("isDefault", rapidjson::Value().SetBool(true), jsonDocAlloc);
+            jsonObject.AddMember("defaultType", rapidjson::Value().SetString("output"), jsonDocAlloc);
+        }
+        else if( i == Pa_GetHostApiInfo( deviceInfo->hostApi )->defaultOutputDevice )
+        {
+            isDeviceDefault = true;
+            const PaHostApiInfo *hostInfo = Pa_GetHostApiInfo( deviceInfo->hostApi );
+			jsonObject.AddMember("isDefault", rapidjson::Value().SetBool(true), jsonDocAlloc);
+            jsonObject.AddMember("defaultType", rapidjson::Value().SetString("output"), jsonDocAlloc);
+        }
+
+        if( !isDeviceDefault )
+        {
+            jsonObject.AddMember("isDefault", rapidjson::Value().SetBool(false), jsonDocAlloc);
+            jsonObject.AddMember("defaultType", rapidJson::Value(), jsonDocAlloc);
+        }
+
         jsonObject.AddMember("hostApi", rapidjson::Value().SetString(std::string(Pa_GetHostApiInfo( deviceInfo->hostApi )->name).c_str(), std::string(Pa_GetHostApiInfo( deviceInfo->hostApi )->name).length(), jsonDocAlloc), jsonDocAlloc);
         jsonObject.AddMember("maxInputs", rapidjson::Value().SetInt(deviceInfo->maxInputChannels), jsonDocAlloc);
 		jsonObject.AddMember("maxOutputs", rapidjson::Value().SetInt(deviceInfo->maxOutputChannels), jsonDocAlloc);
